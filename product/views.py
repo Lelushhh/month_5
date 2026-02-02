@@ -1,17 +1,17 @@
-from django.shortcuts import render
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
+from django.db.models import Count
 
 from .models import Category, Product, Review
 from .serializers import (
     CategorySerializer,
     ProductSerializer,
-    ReviewSerializer
+    ReviewSerializer,
+    ProductReviewSerializer,
+    CategoryCountSerializer
 )
 
-
-#CATEGORIES 
 
 @api_view(['GET'])
 def category_list(request):
@@ -26,15 +26,13 @@ def category_detail(request, id):
         category = Category.objects.get(id=id)
     except Category.DoesNotExist:
         return Response(
-            {"error": "Category not found"},
+            {'error': 'Category not found'},
             status=status.HTTP_404_NOT_FOUND
         )
 
     serializer = CategorySerializer(category)
     return Response(serializer.data)
 
-
-#PRODUCTS
 
 @api_view(['GET'])
 def product_list(request):
@@ -49,15 +47,13 @@ def product_detail(request, id):
         product = Product.objects.get(id=id)
     except Product.DoesNotExist:
         return Response(
-            {"error": "Product not found"},
+            {'error': 'Product not found'},
             status=status.HTTP_404_NOT_FOUND
         )
 
     serializer = ProductSerializer(product)
     return Response(serializer.data)
 
-
-# REVIEWS
 
 @api_view(['GET'])
 def review_list(request):
@@ -67,14 +63,16 @@ def review_list(request):
 
 
 @api_view(['GET'])
-def review_detail(request, id):
-    try:
-        review = Review.objects.get(id=id)
-    except Review.DoesNotExist:
-        return Response(
-            {"error": "Review not found"},
-            status=status.HTTP_404_NOT_FOUND
-        )
+def products_with_reviews(request):
+    products = Product.objects.select_related('stars').all()
+    serializer = ProductReviewSerializer(products, many=True)
+    return Response(serializer.data)
 
-    serializer = ReviewSerializer(review)
+
+@api_view(['GET'])
+def categories_with_count(request):
+    categories = Category.objects.annotate(
+        products_count=Count('products')
+    )
+    serializer = CategoryCountSerializer(categories, many=True)
     return Response(serializer.data)
